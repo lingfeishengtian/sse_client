@@ -14,9 +14,6 @@ class EventSourceTransformer implements StreamTransformer<List<int>, Event> {
     controller = StreamController(onListen: () {
       // the event we are currently building
       var currentEvent = Event();
-      // the regexes we will use later
-      var lineRegex = RegExp(r'^([^:]*)(?::)?(?: )?(.*)?$');
-      var removeEndingNewlineRegex = RegExp(r'^((?:.|\n)*)\n$');
       // This stream will receive chunks of data that is not necessarily a
       // single event. So we build events on the fly and broadcast the event as
       // soon as we encounter a double newline, then we start a new one.
@@ -28,17 +25,17 @@ class EventSourceTransformer implements StreamTransformer<List<int>, Event> {
           // event is done
           // strip ending newline from data
           if (currentEvent.data != null) {
-            var match = removeEndingNewlineRegex.firstMatch(currentEvent.data!)!;
-            currentEvent.data = match.group(1);
+            var match = currentEvent.data!.split('\n');
+            currentEvent.data = match[0];
           }
           controller.add(currentEvent);
           currentEvent = Event();
           return;
         }
-        // match the line prefix and the value using the regex
-        Match match = lineRegex.firstMatch(line)!;
-        var field = match.group(1)!;
-        var value = match.group(2) ?? '';
+        final ind = line.indexOf(':');
+        final match = [line.substring(0, ind), line.substring(ind + 1)];
+        var field = match[0];
+        var value = match[1];
         if (field.isEmpty) {
           // lines starting with a colon are to be ignored
           return;
